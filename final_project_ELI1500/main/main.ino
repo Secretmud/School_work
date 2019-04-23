@@ -1,11 +1,14 @@
 #include <LiquidCrystal_I2C.h>
 #include <Wire.h>
-
+//Pin declaration
 int trigger = 9;
 int echo = 10;
 int btn = 2;
 int dt = 3;
 int clk = 4;
+//Variables needed for the program to run
+int height = 0;
+int offset = 3;
 //Used by the ultrasonic sensor
 bool calibrated = false;
 long distance;
@@ -15,12 +18,14 @@ int counter = 0;
 int dtState;
 int dtLastState;
 //Menu arrays
-char menu[][16] = {{"Calibration"}, {"Drink!!!"}};
+char menu[][16] = {{"Calibration"}, {"Drink!!!"}, {"Info"}};
 char name[] = {"Drink'o'matic!"};
-int calibration();
+//function prototypes
+int calibration(int offset);
 void menu_fields(int x);
 void game(int height);
-
+void info(int height, int offset);
+//Initializing the 16x2 LCD with a I2C connector
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 void setup()
@@ -49,10 +54,12 @@ void loop()
 {
     if (!calibrated) {
         lcd.clear();
-        int height = calibration();
+        height = calibration(offset);
         lcd.print("Height:");
-        lcd.setCursor(0,1);
+        lcd.setCursor(1,1);
         lcd.print(height);
+        lcd.setCursor(1+sizeof(height),1);
+        lcd.print("cm");
         
     } else {
         dtState = digitalRead(dt);
@@ -64,8 +71,8 @@ void loop()
             }
             if ( counter < 0)
                 counter = 0;
-            if ( counter > 1)
-                counter = 1;
+            if ( counter > 2)
+                counter = 2;
             Serial.print("Position: ");
             Serial.println(counter);
             menu_fields(counter);
@@ -76,10 +83,13 @@ void loop()
                 case 0:
                     if (calibrated) {
                         lcd.clear();
-                        int height = calibration();
+                        height = calibration(offset);
+                        lcd.setCursor(0,0);
                         lcd.print("Height:");
-                        lcd.setCursor(0,1);
+                        lcd.setCursor(1,1);
                         lcd.print(height);
+                        lcd.setCursor(1+sizeof(height),1);
+                        lcd.print("cm");
                     }
                     break;
                 case 1:
@@ -87,7 +97,8 @@ void loop()
                     lcd.clear();
                     lcd.print("The game");
                     break;
-                default:
+                case 2:
+                    info(height, offset);
                     break;
             }
         }       
@@ -95,7 +106,7 @@ void loop()
     }
 }
 
-int calibration()
+int calibration(int offset)
 {
     int height = 0;
     digitalWrite(trigger, LOW);
@@ -108,7 +119,7 @@ int calibration()
     Serial.print("Distance: ");
     Serial.println(distance);
     calibrated = true;
-    return distance;
+    return distance + offset;
 }
 
 void menu_fields(int x)
@@ -124,4 +135,20 @@ void menu_fields(int x)
 void game(int height)
 {
 
+}
+
+void info(int height, int offset)
+{
+    lcd.clear();
+    lcd.print("Height:");
+    lcd.setCursor(9,0);
+    lcd.print(height);
+    lcd.setCursor(9+sizeof(height),0);
+    lcd.print("cm");
+    lcd.setCursor(0,1);
+    lcd.print("Offset:");
+    lcd.setCursor(9,1);
+    lcd.print(offset);
+    lcd.setCursor(9+sizeof(offset),1);
+    lcd.print("cm");
 }
