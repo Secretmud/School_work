@@ -54,11 +54,13 @@ int dt = 3;
 int clk = 4;
 int motor1 = 11;
 int motor2 = 12;
+int led = 13;
 //Variables needed for the program to run
+int dist = 0;
 int height = 0;
 int tank1 = 0;
 int tank2 = 0;
-int offset = 3;
+int offset = 0;
 bool set = false; //This is used to determine the type of game
 int distance_array[] = {};
 //Used by the ultrasonic sensor
@@ -78,18 +80,21 @@ char name[] = {"Drink'o'matic!"};
 //function prototypes
 int calibration(int offset);
 int calibration_tank(int offset);
-//int distance_sensor(int x);
+int distance_sensor(int x);
 int distance_tank(int tank);
+void calibration_print();
 void menu_fields(int x);
 void menu_switch(int x);
-//void menu_sub_switch(void);
 void game(int height);
 void info(int height, int offset);
+void lcd_line_clear(int start, int collumn, int rows);
+
 //Initializing the 16x2 LCD with a I2C connector
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 void setup()
 {
+    pinMode(led, OUTPUT);
     pinMode(motor1, OUTPUT);
     pinMode(motor2, OUTPUT);
     pinMode(btn, INPUT_PULLUP);
@@ -110,33 +115,22 @@ void setup()
     }
     lcd.setCursor(6,1);
     lcd.print("v0.1");
+    delay(1000);
 }
 
 void loop()
 {
+    digitalWrite(led, HIGH);
     int menu_size = sizeof(menu)/menu_len -1;
     if (!calibrated) {
         lcd.clear();
         height = calibration(offset);
         tank1 = distance_tank(1);
         tank2 = distance_tank(2);
-        lcd.print("Height:");
-        lcd.setCursor(1,1);
-        lcd.print(height);
-        lcd.setCursor(1+sizeof(height),1);
-        lcd.print("cm");
-        delay(300);
-        lcd.print(tank1);
-        lcd.setCursor(1+sizeof(tank1),1);
-        lcd.print("cm");
-        delay(300);
-        lcd.print(tank2);
-        lcd.setCursor(1+sizeof(tank2),1);
-        lcd.print("cm");
-        delay(300);
         distance_array[0] = height;
         distance_array[1] = tank1;
         distance_array[2] = tank2;
+        calibration_print();
     } else {
         dtState = digitalRead(dt);
         if (dtState != dtLastState) {
@@ -158,6 +152,7 @@ void loop()
     }
 }
 
+
 void menu_switch(int counter)
 {
     switch(counter) {
@@ -165,29 +160,30 @@ void menu_switch(int counter)
             if (calibrated) {
                 lcd.clear();
                 height = calibration(offset);
-                lcd.setCursor(0,0);
-                lcd.print("Height:");
-                lcd.setCursor(1,1);
-                lcd.print(height);
-                lcd.setCursor(1+sizeof(height),1);
-                lcd.print("cm");
+                height = calibration(offset);
+                tank1 = distance_tank(1);
+                tank2 = distance_tank(2);
+                calibration_print();
+                distance_array[0] = height;
+                distance_array[1] = tank1;
+                distance_array[2] = tank2;
             }
             break;
         case 1:
-            set = false;
-            game(height, set, 0, offset);
-            break;
-        case 2:
             set = true;
             game(height, set, 10, offset);
             break;
-        case 3:
+        case 2:
             set = true;
             game(height, set, 20, offset);
             break;
-        case 4:
+        case 3:
             set = true;
             game(height, set, 30, offset);
+            break;
+        case 4:
+            set = false;
+            game(height, set, 0, offset);
             break;
         case 5:
             info(height, offset);
@@ -206,8 +202,7 @@ int calibration(int offset)
     duration = pulseIn(echo[0], HIGH);
     distance= duration*0.034/2;
     calibrated = true;
-    distance_array[0] = distance + offset;
-    return distance + offset;
+    return distance - offset;
 }
 
 int distance_tank(int tank)
@@ -219,11 +214,11 @@ int distance_tank(int tank)
     digitalWrite(trigger[tank], LOW);
     duration = pulseIn(echo[tank], HIGH);
     distance= duration*0.034/2;
-    return distance + offset;
+    return distance - offset;
 
 }
 
-int distance_sensor(int x, int offset)
+int distance_sensor(int x)
 {
     digitalWrite(trigger[x], LOW);
     delayMicroseconds(2);
@@ -232,7 +227,7 @@ int distance_sensor(int x, int offset)
     digitalWrite(trigger[x], LOW);
     duration = pulseIn(echo[x], HIGH);
     distance= duration*0.034/2;
-    return distance + offset;
+    return distance;
 }
 
 void menu_fields(int current)
@@ -248,16 +243,35 @@ void menu_fields(int current)
 void game(int height, bool set, int percentage, int offset)
 {
     if (set) {
-        int dist = (percentage/100)*height;
+        lcd.clear();
+        dist = (percentage/100)*height;
+        int dH = sensor_distance[0] - dist;
         game_print(height, dist);
-        if(distance_sensor(0, offset)) 
+        while(height != dH) { 
             digitalWrite(motor1, HIGH);
-        else if (distance_sensor(0, offset) > dist && distance_sensor(0, offset) < height)
+            height = distance_sensor(0);
+        }
+        while(distance_sensor(0) != distance_array[0]) {   
+            digitalWrite(motor1, LOW);
             digitalWrite(motor2, HIGH);
+        }
+        digitalWrite(motor1, LOW);
+        digitalWrite(motor2, LOW);
     } else {
         int p_x = rand() % 100;
-        int dist = (p_x/100)*height;
+        dist = (p_x/100)*height;
         game_print(height, dist);
+        game_print(height, dist);
+        while(height != dH) { 
+            digitalWrite(motor1, HIGH);
+            height = distance_sensor(0);
+        }
+        while(distance_sensor(0) != distance_array[0]) {   
+            digitalWrite(motor1, LOW);
+            digitalWrite(motor2, HIGH);
+        }
+        digitalWrite(motor1, LOW);
+        digitalWrite(motor2, LOW);
     }
 }
 
@@ -275,9 +289,6 @@ void game_print(int height, int x)
 
 void info(int height, int offset)
 {
-    for (int y = 0; y < sizeof(distance_array)/sizeof(int); y++) {
-
-    }
     int x = height - offset;
     lcd.clear();
     lcd.print("Height:");
@@ -285,4 +296,27 @@ void info(int height, int offset)
     lcd.print(x);
     lcd.setCursor(10+sizeof(height),0);
     lcd.print("cm");
+    calibration_print();
+}
+
+void calibration_print()
+{
+    lcd.clear();
+    lcd.print("Height: ");
+    for (int i = 0; i < 3; i++) {
+        lcd.setCursor(1,1);
+        lcd.print(distance_array[i]);
+        lcd.setCursor(1+sizeof(distance_array[i]),1);
+        lcd.print("cm");
+        delay(600);
+        lcd_line_clear(0, 16, 1);
+    }
+}
+
+void lcd_line_clear(int start, int collumn, int rows)
+{
+    for (int x = start; x < rows; x++) {
+        lcd.setCursor(x, collumn);
+        lcd.print(" ");
+    }
 }
