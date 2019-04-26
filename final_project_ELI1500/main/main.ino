@@ -9,35 +9,6 @@
   '.='. -   .' \==\ - , /==/ - , ,/'.='. -   .' /==/  / / , /==/ ,     /      /==/ -/
     `--`--''    `--`---'`--`-----'   `--`--''   `--`./  `--``--`-----``       `--`--`
 
-   ,-,--.  ,--.--------.   _,.---._
- ,-.'-  _\/==/,  -   , -\,-.' , -  `.   .-.,.---.     _..---.  ,--.-.  .-,--.
-/==/_ ,_.'\==\.-.  - ,-./==/_,  ,  - \ /==/  `   \  .' .'.-. \/==/- / /=/_ /
-\==\  \    `--`\==\- \ |==|   .=.     |==|-, .=., |/==/- '=' /\==\, \/=/. /
- \==\ -\        \==\_ \|==|_ : ;=:  - |==|   '='  /|==|-,   '  \==\  \/ -/
- _\==\ ,\       |==|- ||==| , '='     |==|- ,   .' |==|  .=. \  |==|  ,_/
-/==/\/ _ |      |==|, | \==\ -    ,_ /|==|_  . ,'. /==/- '=' ,| \==\-, /
-\==\ - , /      /==/ -/  '.='. -   .' /==/  /\ ,  )==|   -   /  /==/._/
- `--`---'       `--`--`    `--`--''   `--`-`--`--'`-._`.___,'   `--`-`
-
-              .-._         .=-.-.       ,-.-.    ,----.                ,-,--.   .=-.-.
- .--.-. .-.-./==/ \  .-._ /==/_ /,--.-./=/ ,/ ,-.--` , \  .-.,.---.  ,-.'-  _\ /==/_ /
-/==/ -|/=/  ||==|, \/ /, /==|, |/==/, ||=| -||==|-  _.-` /==/  `   \/==/_ ,_.'|==|, |,--.--------.
-|==| ,||=| -||==|-  \|  ||==|  |\==\,  \ / ,||==|   `.-.|==|-, .=., \==\  \   |==|  /==/,  -   , -\
-|==|- | =/  ||==| ,  | -||==|- | \==\ - ' - /==/_ ,    /|==|   '='  /\==\ -\  |==|- \==\.-.  - ,-./
-|==|,  \/ - ||==| -   _ ||==| ,|  \==\ ,   ||==|    .-' |==|- ,   .' _\==\ ,\ |==| ,|`--`--------`
-|==|-   ,   /|==|  /\ , ||==|- |  |==| -  ,/|==|_  ,`-._|==|_  . ,'./==/\/ _ ||==|- |
-/==/ , _  .' /==/, | |- |/==/. /  \==\  _ / /==/ ,     //==/  /\ ,  )==\ - , //==/. /
-`--`..---'   `--`./  `--``--`-`    `--`--'  `--`-----`` `--`-`--`--' `--`---' `--`-`
- ,--.--------.    ,----.  ,--.--------.    ,----.  ,--.--------.
-/==/,  -   , -\,-.--` , \/==/,  -   , -\,-.--` , \/==/,  -   , -\
-\==\.-.  - ,-./==|-  _.-`\==\.-.  - ,-./==|-  _.-`\==\.-.  - ,-./
- `--`\==\- \  |==|   `.-. `--`\==\- \  |==|   `.-. `--`\==\- \
-      \==\_ \/==/_ ,    /      \==\_ \/==/_ ,    /      \==\_ \
-      |==|- ||==|    .-'       |==|- ||==|    .-'       |==|- |
-      |==|, ||==|_  ,`-._      |==|, ||==|_  ,`-._      |==|, |
-      /==/ -//==/ ,     /      /==/ -//==/ ,     /      /==/ -/
-      `--`--``--`-----``       `--`--``--`-----``       `--`--`
-
 Gruppe 7:
     Oppgave:
         Vanndispenser for dyr(med litt forandring)
@@ -60,12 +31,14 @@ int motor1 = 11;
 int motor2 = 12;
 int led = 13;
 //Variables needed for the program to run
+int height_t = 15;
 float dist = 0;
 int height = 0;
 int tank1 = 0;
 int tank2 = 0;
 int offset = 1;
 bool set = false; //This is used to determine the type of game
+bool menu_bool = false;
 //Used by the ultrasonic sensor
 bool calibrated = false;
 long distance;
@@ -93,10 +66,9 @@ char sens[][6] = {
 };
 int distance_array[] = {};
 //function prototypes
-int calibration(int offset);
+int calibration(int offset, int x);
 int calibration_tank(int offset);
 int distance_sensor(int x);
-int distance_tank(int tank);
 void calibration_print();
 void menu_fields(int x);
 void menu_switch(int x);
@@ -121,7 +93,7 @@ void setup() {
     lcd.begin();
     lcd.backlight();
     lcd.clear();
-    dtLastState = digitalRead(dt);
+    dtLastState = digitalRead(dt);/*
     for (int x = 0; x < 14; x++) {
         lcd.setCursor(x + 1, 0);
         lcd.print(name[x]);
@@ -129,7 +101,7 @@ void setup() {
     }
     lcd.setCursor(6, 1);
     lcd.print("v0.1");
-    delay(1000);
+    delay(1000);*/
 }
 
 void loop() {
@@ -137,13 +109,13 @@ void loop() {
     int menu_size = sizeof(menu) / menu_len - 1;
     if (!calibrated) {
         lcd.clear();
-        height = calibration(offset);
-        tank1 = distance_tank(1);
-        tank2 = distance_tank(2);
-        calibration_print();
+        height = calibration(offset, 0);
+        tank1 = calibration(offset, 1);
+        tank2 = calibration(offset, 2);
         distance_array[0] = height;
         distance_array[1] = tank1;
         distance_array[2] = tank2;
+        calibration_print();
     } else {
         dtState = digitalRead(dt);
         if (dtState != dtLastState) {
@@ -155,11 +127,11 @@ void loop() {
             if (counter < 0)
                 counter = 0;
             if (counter > menu_size)
-                counter = menu_size + 1;
-            menu_fields(counter);
+                counter = menu_size;
+           menu_fields(counter);
         }
         if (digitalRead(btn) == LOW) {
-            menu_switch(counter);
+           menu_switch(counter);
         }
         dtLastState = dtState;
     }
@@ -167,64 +139,52 @@ void loop() {
 
 void menu_switch(int counter) {
     switch (counter) {
-    case 0:
-        if (calibrated) {
-            lcd.clear();
-            height = calibration(offset);
-            height = calibration(offset);
-            tank1 = distance_tank(1);
-            tank2 = distance_tank(2);
-            calibration_print();
-            distance_array[0] = height;
-            distance_array[1] = tank1;
-            distance_array[2] = tank2;
-        }
-        break;
-    case 1:
-        set = true;
-        game(height, set, 10, offset);
-        break;
-    case 2:
-        set = true;
-        game(height, set, 20, offset);
-        break;
-    case 3:
-        set = true;
-        game(height, set, 30, offset);
-        break;
-    case 4:
-        set = false;
-        game(height, set, 0, offset);
-        break;
-    case 5:
-        info(height, offset);
-        break;
-    default:
-        break;
+        case 0:
+            if (calibrated) {
+                lcd.clear();
+                height = calibration(offset, 0);
+                tank1 = calibration(offset, 1);
+                tank2 = calibration(offset, 2);
+                distance_array[0] = height;
+                distance_array[1] = tank1;
+                distance_array[2] = tank2;
+                calibration_print();
+            }
+            break;
+        case 1:
+            set = true;
+            game(height, set, 10, offset);
+            break;
+        case 2:
+            set = true;
+            game(height, set, 20, offset);
+            break;
+        case 3:
+            set = true;
+            game(height, set, 30, offset);
+            break;
+        case 4:
+            set = false;
+            game(height, set, 0, offset);
+            break;
+        case 5:
+            info(height, offset);
+            break;
+        default:
+            break;
     }
-
 }
 
-int calibration(int offset) {
-    digitalWrite(trigger[0], HIGH);
+int calibration(int offset, int x) {
+    digitalWrite(trigger[x], LOW);
+    delayMicroseconds(2);
+    digitalWrite(trigger[x], HIGH);
     delayMicroseconds(10);
-    digitalWrite(trigger[0], LOW);
-    duration = pulseIn(echo[0], HIGH);
+    digitalWrite(trigger[x], LOW);
+    duration = pulseIn(echo[x], HIGH);
     distance = duration * 0.034 / 2;
     calibrated = true;
     return distance - offset;
-}
-
-int distance_tank(int tank) {
-    digitalWrite(trigger[tank], LOW);
-    delayMicroseconds(2);
-    digitalWrite(trigger[tank], HIGH);
-    delayMicroseconds(10);
-    digitalWrite(trigger[tank], LOW);
-    duration = pulseIn(echo[tank], HIGH);
-    distance = duration * 0.034 / 2;
-    return distance - offset;
-
 }
 
 int distance_sensor(int x) {
@@ -252,16 +212,15 @@ void game(int height, bool set, float percentage, int offset) {
     if (set) {
         lcd.clear();
         dist = (percentage / 100) * height;
-        dH = distance_array[0] - dist;
+        dH = height - dist;
         game_print(height, dist);
-        while (height != dH) {
+        while(height != 9) {
             digitalWrite(motor1, HIGH);
             height = distance_sensor(0);
         }
-        while (height != distance_array[0]) {
+        while(height != 7) {
             digitalWrite(motor1, LOW);
             digitalWrite(motor2, HIGH);
-            height = distance_sensor(0);
         }
         digitalWrite(motor1, LOW);
         digitalWrite(motor2, LOW);
@@ -271,13 +230,13 @@ void game(int height, bool set, float percentage, int offset) {
         dH = distance_array[0] - dist;
         game_print(height, dist);
         game_print(height, dist);
-        while (height != dH) {
-            digitalWrite(motor1, HIGH);
+        while(height != dH) {
+            digitalWrite(motor2, HIGH);
             height = distance_sensor(0);
         }
-        while (distance_sensor(0) != distance_array[0]) {
-            digitalWrite(motor1, LOW);
-            digitalWrite(motor2, HIGH);
+        while(height != distance_array[0]) {
+            digitalWrite(motor2, LOW);
+            digitalWrite(motor1, HIGH);
         }
         digitalWrite(motor1, LOW);
         digitalWrite(motor2, LOW);
@@ -306,25 +265,23 @@ void info(int height, int offset) {
 }
 
 void calibration_print() {
-    lcd.clear();
-    lcd.print("Height: ");
     for (int i = 0; i < 3; i++) {
+        lcd_line_clear(6, 16, 1);
         lcd.setCursor(0, 1);
         lcd.print(sens[i]);
         lcd.setCursor(7, 1);
-        lcd.print(i);
-        lcd.setCursor(10, 1);
         lcd.print(distance_array[i]);
-        lcd.setCursor(11 + sizeof(distance_array[i]), 1);
+        lcd.setCursor(7 + sizeof(distance_array[i]) , 1);
         lcd.print("cm");
         delay(600);
-        lcd_line_clear(0, 16, 1);
     }
+    calibrated = true;
 }
 
-void lcd_line_clear(int start, int collumn, int rows) {
+void lcd_line_clear(int start, int rows, int collumn) {
     for (int x = start; x < rows; x++) {
         lcd.setCursor(x, collumn);
         lcd.print(" ");
+        delay(10);
     }
 }
