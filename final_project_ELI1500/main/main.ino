@@ -31,14 +31,13 @@ int motor1 = 11;
 int motor2 = 12;
 int led = 13;
 //Variables needed for the program to run
-int height_t = 5;
+int height_t = 7;
 float dist = 0;
 int height = 0;
 int tank1 = 0;
 int tank2 = 0;
 int offset = 0;
 bool set = false;
-bool menu_bool = false;
 
 //Used by the ultrasonic sensor
 bool calibrated = false;
@@ -67,7 +66,6 @@ char sens[][6] = {
     {"Tank1:"},
     {"Tank2:"}
 };
-int distance_array[] = {};
 
 //function prototypes
 int calibration(int offset, int x);
@@ -113,7 +111,9 @@ void loop() {
     int menu_size = sizeof(menu) / menu_len - 1;
     if (!calibrated) {
         lcd.clear();
-        arr_assignment();
+        height = calibration(offset, 0);
+        tank1 = calibration(offset, 1);
+        tank2 = calibration(offset, 2);
         calibration_print();
     } else {
         dtState = digitalRead(dt);
@@ -136,11 +136,6 @@ void loop() {
     }
 }
 
-void arr_assignment() {
-    for (int x = 0; x < 3; x++)
-        distance_array[x] = calibration(offset, x);
-}
-
 void menu_switch(int counter) {
     switch (counter) {
         case 0:
@@ -151,23 +146,19 @@ void menu_switch(int counter) {
             }
             break;
         case 1:
-            set = true;
-            game(distance_array[0], set, 10, offset);
+            game(height, true, 10, offset);
             break;
         case 2:
-            set = true;
-            game(distance_array[0], set, 20, offset);
+            game(height, true, 20, offset);
             break;
         case 3:
-            set = true;
-            game(distance_array[0], set, 30, offset);
+            game(height, true, 30, offset);
             break;
         case 4:
-            set = false;
-            game(distance_array[0], set, 0, offset);
+            game(height, false, 0, offset);
             break;
         case 5:
-            info(distance_array[0], offset);
+            info(height, offset);
             break;
         default:
             break;
@@ -213,7 +204,10 @@ void game(int height, bool set, float percentage, int offset) {
         dist = (percentage / 100) * height;
         dH = height - dist;
         game_print(height, dist);
+        delay(1000);
+        lcd.clear();
         while(height > dH) {
+            lcd.print(height);
             digitalWrite(motor1, HIGH);
             height = distance_sensor(0);
         }
