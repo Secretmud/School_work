@@ -15,6 +15,7 @@ Gruppe 7:
 
 #include <LiquidCrystal_I2C.h>
 #include <Wire.h>
+#include <HCSR04.h>
 #define menu_len 16
 //Pin declaration
 
@@ -48,7 +49,6 @@ char menu[][menu_len] = {{"Calibration"}, {"Mix: 10/90"},
                          {"Mix: 20/80"}, {"Mix: 30/70"}, 
                          {"Random drink"}, {"System info"}
                         };
-char name[] = {"Drink'o'matic!"};
 char sens[][6] = {{"Front:"}, {"Tank1:"}, {"Tank2:"}};
 int out[] = { 5, 7, 9, 11, 12, 13};
 int in[] = {3, 4, 6, 8, 10};
@@ -58,12 +58,17 @@ float calibration(float offset, int x);
 float calibration_tank(float offset);
 void calibration_print(int height, int tank1, int);
 void menu_fields(int x);
-void menu_switch(int x, float height, int offset, int tank1, int tank2);
+void menu_switch(int counter, double height, float offset, double box1, double box2);
 void game(float height);
 void lcd_line_clear(int start, int collumn, int rows);
 
 //Initializing the 16x2 LCD with a I2C connector
 LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+//Initializing the sensors
+UltraSonicDistanceSensor front(trigger[0], echo[0]);
+UltraSonicDistanceSensor tank1(trigger[1], echo[1]);
+UltraSonicDistanceSensor tank2(trigger[2], echo[2]);
 
 void setup() {
     pinMode(btn, INPUT_PULLUP);
@@ -78,31 +83,28 @@ void setup() {
 }
 
 void loop() {
+    double height;
+    double box1;
+    double box2;
     int height_t = 7;
-    float height = 0;
-    float tank1 = 0;
-    float tank2 = 0;
     float offset = 0;
     bool set = false;
-    bool started_first = false;
+    bool measurement = true;
     int menu_size = sizeof(menu) / menu_len - 1;
-    if (!started_first) {
-        for (int x = 1; x < 15; x++) {
-            lcd.setCursor(x, 0);
-            lcd.print(name[x]);
-            delay(200);
-        }
-        lcd.setCursor(6, 1);
-        lcd.print("v0.1");
-        delay(1000);
-        started_first = true;
-    }
     if (!calibrated) {
         lcd.clear();
-        height = calibration(offset, 0);
-        tank1 = calibration(offset, 1);
-        tank2 = calibration(offset, 2);
-        calibration_print(height, tank1, tank2);
+        while (measurement) {
+            lcd.clear();
+            lcd.print("Paper over cup.");
+            lcd.setCursor(0,1);
+            lcd.print("press button");
+            if (digitalWrite(btn) == LOW)
+                measurement = false
+        } 
+         height = calibration(offset, 0);
+         box1 = calibration(offset, 1);
+         box2 = calibration(offset, 2);
+        calibration_print(height, box1, box2);
 
     } else {
         dtState = digitalRead(dt);
@@ -120,21 +122,26 @@ void loop() {
         }
         //Checking for "LOW" since pinMode for btn is INPUT_PULLUP
         if (digitalRead(btn) == LOW) { 
-           menu_switch(counter, height, offset, tank1, tank2);
+           menu_switch(counter, height, offset, box1, box2);
         }
         dtLastState = dtState;
     }
 }
 
-void menu_switch(int counter, float height, float offset, int tank1, int tank2) {
+void menu_switch(int counter, double height, float offset, double tank1, double tank2) {
     switch (counter) {
         case 0:
             if (calibrated) {
                 lcd.clear();
-                height = calibration(offset, 0);
-                tank1 = calibration(offset, 1);
-                tank2 = calibration(offset, 2);
-                calibration_print(height, tank1, tank2);
+                do
+                {
+                    
+                } while (digitalWrite != LOW);
+                
+                double height = front.measureDistanceCm();
+                double box1 = tank1.measureDistanceCm();
+                double box2 = tank2.measureDistanceCm();
+                calibration_print(height, box1, box2);
             }
             break;
         case 1:
@@ -155,18 +162,6 @@ void menu_switch(int counter, float height, float offset, int tank1, int tank2) 
         default:
             break;
     }
-}
-
-float calibration(float offset, int x) {
-    digitalWrite(trigger[x], LOW);
-    delayMicroseconds(2);
-    digitalWrite(trigger[x], HIGH);
-    delayMicroseconds(10);
-    digitalWrite(trigger[x], LOW);
-    duration = pulseIn(echo[x], HIGH);
-    distance = duration/29/2;
-    calibrated = true;
-    return distance - offset;
 }
 
 void menu_fields(int counter) {
@@ -191,7 +186,7 @@ void programs(float height, bool set, float percentage, int offset) {
         while(1) {
             if (digitalRead(btn) == LOW)
                 break;
-            if (calibration(offset, 0) >= dH) {
+            if (front.measureDistanceCm() >= dH && tank1.measureDistanceCm() >= 20) {
                 lcd.clear();
                 lcd.print(calibration(offset, 0));
                 digitalWrite(motor1, HIGH);
@@ -210,7 +205,7 @@ void programs(float height, bool set, float percentage, int offset) {
         while(1) {
             if (digitalRead(btn) == LOW)
                 break;
-            if (calibration(offset, 0) >= dH) {
+            if (front.measureDistanceCm() >= dH && tank1.measureDistanceCm() >= 20) {
                 lcd.clear();
                 lcd.print(calibration(offset, 0));
                 digitalWrite(motor1, HIGH);
@@ -220,7 +215,7 @@ void programs(float height, bool set, float percentage, int offset) {
                 break;
             }
         }
-        digitalWrite(motor2, LOW);
+        
     }
 }
 
