@@ -52,6 +52,7 @@ char name[] = {"Drink'o'matic!"};
 char sens[][6] = {{"Front:"}, {"Tank1:"}, {"Tank2:"}};
 int out[] = { 5, 7, 9, 11, 12, 13};
 int in[] = {3, 4, 6, 8, 10};
+
 //function prototypes
 float calibration(float offset, int x);
 float calibration_tank(float offset);
@@ -94,6 +95,7 @@ void loop() {
         lcd.setCursor(6, 1);
         lcd.print("v0.1");
         delay(1000);
+        started_first = true;
     }
     if (!calibrated) {
         lcd.clear();
@@ -133,20 +135,19 @@ void menu_switch(int counter, float height, float offset, int tank1, int tank2) 
                 tank1 = calibration(offset, 1);
                 tank2 = calibration(offset, 2);
                 calibration_print(height, tank1, tank2);
-
             }
             break;
         case 1:
-            game(height, true, 10, offset);
+            programs(height, true, 10, offset);
             break;
         case 2:
-            game(height, true, 20, offset);
+            programs(height, true, 20, offset);
             break;
         case 3:
-            game(height, true, 30, offset);
+            programs(height, true, 30, offset);
             break;
         case 4:
-            game(height, false, 0, offset);
+            programs(height, false, 0, offset);
             break;
         case 5:
             calibration_print(height, tank1, tank2);
@@ -177,7 +178,7 @@ void menu_fields(int counter) {
     lcd.print(menu[counter + 1]);
 }
 
-void game(float height, bool set, float percentage, int offset) {
+void programs(float height, bool set, float percentage, int offset) {
     float dH;
     float dist = 0;
     if (set) {
@@ -199,12 +200,7 @@ void game(float height, bool set, float percentage, int offset) {
                 digitalWrite(motor1, LOW);
                 break;
             }
-        }/*
-        while(height  <= dH && height > height_t ) {
-            digitalWrite(motor2, HIGH);
-            height = distance_sensor(0);
         }
-        digitalWrite(motor2, LOW);*/
     } else {
         float p_x = rand() % 100;
         dist = (p_x / 100) * height;
