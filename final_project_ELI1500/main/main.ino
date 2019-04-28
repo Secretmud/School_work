@@ -17,6 +17,7 @@ Gruppe 7:
 #include <Wire.h>
 #include <HCSR04.h>
 #define menu_len 16
+#define full_glass 11000
 //Pin declaration
 
 int trigger[] = {
@@ -33,6 +34,14 @@ int clk = 4;
 int motor1 = 11;
 int motor2 = 12;
 int led = 13;
+
+bool set = false;
+bool random = false;
+
+double height;
+double box1;
+double box2;
+double glass;
 
 //Used by the ultrasonic sensor
 bool calibrated = false;
@@ -82,13 +91,8 @@ void setup() {
 }
 
 void loop() {
-    double height = front.measureDistanceCm();
-    double box1 = tank1.measureDistanceCm();
-    double box2 = tank2.measureDistanceCm();
-    double glass;
     int height_t = 7;
     float offset = 0;
-    bool set = false;
     bool measurement = true;
     int menu_size = sizeof(menu) / menu_len - 1;
     if (!calibrated) {
@@ -102,7 +106,7 @@ void loop() {
         height = front.measureDistanceCm();
         box1 = tank1.measureDistanceCm();
         box2 = tank2.measureDistanceCm();
-        calibration_print(glass, box1, box2);
+        calibration_print(height - glass, box1, box2);
         calibrated = true;
     } else {
         dtState = digitalRead(dt);
@@ -140,10 +144,14 @@ void menu_switch(int counter, double height, double glass, double box1, double b
                 height = front.measureDistanceCm();
                 box1 = tank1.measureDistanceCm();
                 box2 = tank2.measureDistanceCm();
-                calibration_print(glass, box1, box2);
+                calibration_print(height - glass, box1, box2);
             }
             break;
         case 1:
+            if (tank1.measureDistanceCm >= 25) {
+                digitalWrite(led, HIGH); 
+                break;
+            }
             programs(height, true, 10, glass);
             break;
         case 2:
@@ -156,7 +164,7 @@ void menu_switch(int counter, double height, double glass, double box1, double b
             programs(height, false, 0, glass);
             break;
         case 5:
-            calibration_print(glass, box1, box2);
+            calibration_print(height - glass, box1, box2);
             break;
         default:
             break;
@@ -175,79 +183,53 @@ void menu_fields(int counter) {
 void programs(double height, bool set, double percentage, double glass) {
     double dH;
     double dist;
-    double ho = height - glass;
-    bool ran = false;
+    double ho;
     if (set) {
         lcd.clear();
-        dist = (percentage / 100) * height;
+        dist = (percentage / 100);
         dH = height - dist;
-        game_print(height, dist);
+        game_print(height, dist*100);
         delay(1000);
         while(1) {
-            while(height >= dH && (tank1.measureDistanceCm() || tank2.measureDistanceCm()) <= 25) {
-                digitalWrite(motor2, LOW);
-                height = front.measureDistanceCm();
-                lcd.clear();
-                lcd.print(height);
-                digitalWrite(motor1, HIGH);
-                if (digitalRead(btn) == LOW) {
-                    digitalWrite(motor1, LOW);
-                    digitalWrite(motor2, LOW);
-                    break;
-                }
-                if (height <= dH || height == dH)
-                    break;
-            }
+            digitalWrite(motor1, HIGH);
+            delay(full_glass*dist);
             digitalWrite(motor1, LOW);
-            while (height == dH - 1 || height <= dH - 1 && front.measureDistanceCm() >= ho && (tank1.measureDistanceCm() || tank2.measureDistanceCm())<= 25) {
-                digitalWrite(motor1, LOW);
-                height = front.measureDistanceCm();
-                lcd.clear();
-                lcd.print(height);
-                digitalWrite(motor2, HIGH);
-                if (digitalRead(btn) == LOW) {
-                    digitalWrite(motor1, LOW);
-                    digitalWrite(motor2, LOW);
-                    break;
-                }
-            }
-            digitalWrite(motor2, LOW);  
-            lcd.clear();
+            digitalWrite(motor2, HIGH);
+            delay(full_glass*(1-dist));
+            digitalWrite(motor2, LOW);
+            break;
+        }
+    } else if (random) {
+        lcd.clear();
+        ho = rand() % 100;
+        dist = (ho / 100);
+        dH = height - dist;
+        game_print(height, dist*100);
+        delay(1000);
+        while(1) {
+            digitalWrite(motor1, HIGH);
+            delay(full_glass*dist);
+            digitalWrite(motor1, LOW);
+            digitalWrite(motor2, HIGH);
+            delay(full_glass*(1-dist));
+            digitalWrite(motor2, LOW);
+            break;
         }
     } else {
-        double p_x = rand() % 100;
-        dist = (p_x / 100) * height;
+        lcd.clear();
+        ho = rand() % 100;
+        dist = (percentage / 100);
         dH = height - dist;
-        game_print(height, dist);
+        game_print(height, dist*100);
+        delay(1000);
         while(1) {
-            while(height >= dH && (tank1.measureDistanceCm() || tank2.measureDistanceCm()) <= 25) {
-                digitalWrite(motor2, LOW);
-                height = front.measureDistanceCm();
-                lcd.clear();
-                lcd.print(height);
-                digitalWrite(motor1, HIGH);
-                if (digitalRead(btn) == LOW) {
-                    digitalWrite(motor1, LOW);
-                    digitalWrite(motor2, LOW);
-                    break;
-                }
-            }
+            digitalWrite(motor1, HIGH);
+            delay(full_glass*dist);
             digitalWrite(motor1, LOW);
-            while (height <= dH && front.measureDistanceCm() >= glass - 2 && (tank1.measureDistanceCm() || tank2.measureDistanceCm())<= 25) {
-                digitalWrite(motor1, LOW);
-                height = front.measureDistanceCm();
-                lcd.clear();
-                lcd.print(height);
-                digitalWrite(motor2, HIGH);
-                if (digitalRead(btn) == LOW) {
-                    digitalWrite(motor1, LOW);
-                    digitalWrite(motor2, LOW);
-                    break;
-                }
-            }
-            digitalWrite(motor2, LOW);  
-        }
-        
+            digitalWrite(motor2, HIGH);
+            delay(full_glass*(1-dist));
+            digitalWrite(motor2, LOW);
+            break;
     }
 }
 
@@ -257,7 +239,7 @@ void game_print(double height, double x) {
     lcd.setCursor(13, 0);
     lcd.print(height);
     lcd.setCursor(0, 1);
-    lcd.print("Liquid1 cm:");
+    lcd.print("Mix in \%:");
     lcd.setCursor(13, 1);
     lcd.print(x);
 }
