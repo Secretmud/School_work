@@ -221,6 +221,10 @@ void programs(double height, bool set, bool rand_set, double percentage, double 
         lcd.setCursor(0, 1);
         lcd.print("Button to exit");
         while (1) {
+            if (tank2.measureDistanceCm() > 22) {
+                digitalWrite(motor2, LOW);
+                tank_low(1);
+            }
             if (front.measureDistanceCm() <= 13) {
                 digitalWrite(motor2, LOW);
                 if (digitalRead(dt) == HIGH)
@@ -230,7 +234,6 @@ void programs(double height, bool set, bool rand_set, double percentage, double 
                 digitalWrite(motor2, HIGH);
                 delay(400);
             }
-
         }
     }
 }
