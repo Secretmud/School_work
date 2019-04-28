@@ -276,13 +276,11 @@ void lcd_line_clear(int start, int rows, int collumn) {
 }
 
 void tank_low(int tank) {
-
     char tank_number[][5] = {{"Tank1"}, {"Tank2"}};
     lcd.clear();
     lcd.print("Low volume in");
     lcd.setCursor(0, 1);
     lcd.print(tank_number[tank]);
-
     while (1) {
         digitalWrite(led, HIGH);
         delay(300);
