@@ -17,7 +17,7 @@ Gruppe 7:
 #include <Wire.h>
 #include <HCSR04.h>
 #define menu_len 16
-#define full_glass 11000
+#define full_glass 12000
 //Pin declaration
 
 int trigger[] = {
@@ -36,7 +36,7 @@ int motor2 = 12;
 int led = 13;
 
 bool set = false;
-bool random = false;
+bool rand_set = false;
 
 double height;
 double box1;
@@ -56,7 +56,8 @@ int dtLastState;
 //Arrays
 char menu[][menu_len] = {{"Calibration"}, {"Mix: 10/90"},
                          {"Mix: 20/80"}, {"Mix: 30/70"}, 
-                         {"Random drink"}, {"System info"}
+                         {"Random drink"}, {"Cat-mode"},
+                         {"System info"}
                         };
 int out[] = { 5, 7, 9, 11, 12, 13};
 int in[] = {3, 4, 6, 8, 10};
@@ -97,12 +98,6 @@ void loop() {
     int menu_size = sizeof(menu) / menu_len - 1;
     if (!calibrated) {
         lcd.clear();
-        lcd.print("Paper over cup.");
-        delay(2500);
-        glass = front.measureDistanceCm();
-        lcd.clear();
-        lcd.print("Remove paper...");
-        delay(3000);
         height = front.measureDistanceCm();
         box1 = tank1.measureDistanceCm();
         box2 = tank2.measureDistanceCm();
@@ -135,36 +130,33 @@ void menu_switch(int counter, double height, double glass, double box1, double b
         case 0:
             if (calibrated) {
                 lcd.clear();
-                lcd.print("Paper over cup.");
-                delay(2500);
-                glass = front.measureDistanceCm();
-                lcd.clear();
-                lcd.print("Remove paper...");
-                delay(3000);
                 height = front.measureDistanceCm();
                 box1 = tank1.measureDistanceCm();
                 box2 = tank2.measureDistanceCm();
-                calibration_print(height - glass, box1, box2);
+                calibration_print(height, box1, box2);
             }
             break;
         case 1:
-            if (tank1.measureDistanceCm >= 25) {
+            if (tank1.measureDistanceCm() >= 25) {
                 digitalWrite(led, HIGH); 
                 break;
             }
-            programs(height, true, 10, glass);
+            programs(height, true, false, 10, glass);
             break;
         case 2:
-            programs(height, true, 20, glass);
+            programs(height, true, false, 20, glass);
             break;
         case 3:
-            programs(height, true, 30, glass);
+            programs(height, true, false, 30, glass);
             break;
         case 4:
-            programs(height, false, 0, glass);
+            programs(height, false, true, 0, glass);
             break;
         case 5:
-            calibration_print(height - glass, box1, box2);
+            programs(height, false, false, 0, glass);
+            break;
+        case 6:
+            calibration_print(height, box1, box2);
             break;
         default:
             break;
@@ -180,14 +172,13 @@ void menu_fields(int counter) {
     lcd.print(menu[counter + 1]);
 }
 
-void programs(double height, bool set, double percentage, double glass) {
+void programs(double height, bool set, bool rand_set, double percentage, double glass) {
     double dH;
     double dist;
     double ho;
     if (set) {
         lcd.clear();
         dist = (percentage / 100);
-        dH = height - dist;
         game_print(height, dist*100);
         delay(1000);
         while(1) {
@@ -199,11 +190,10 @@ void programs(double height, bool set, double percentage, double glass) {
             digitalWrite(motor2, LOW);
             break;
         }
-    } else if (random) {
+    } else if (rand_set) {
         lcd.clear();
         ho = rand() % 100;
         dist = (ho / 100);
-        dH = height - dist;
         game_print(height, dist*100);
         delay(1000);
         while(1) {
@@ -217,19 +207,18 @@ void programs(double height, bool set, double percentage, double glass) {
         }
     } else {
         lcd.clear();
-        ho = rand() % 100;
-        dist = (percentage / 100);
-        dH = height - dist;
-        game_print(height, dist*100);
-        delay(1000);
+        lcd.print("Cat-mode!");
+        lcd.setCursor(0,1);
+        lcd.print("Button to exit");
         while(1) {
-            digitalWrite(motor1, HIGH);
-            delay(full_glass*dist);
-            digitalWrite(motor1, LOW);
-            digitalWrite(motor2, HIGH);
-            delay(full_glass*(1-dist));
-            digitalWrite(motor2, LOW);
-            break;
+            if (front.measureDistanceCm() <= 10) {
+                digitalWrite(motor1, LOW);
+            } else {
+                digitalWrite(motor1, HIGH);
+            }
+            if (digitalRead(btn) == LOW)
+                break;
+        }
     }
 }
 
@@ -250,7 +239,7 @@ void calibration_print(double height, double tank1, double tank2) {
     lcd.clear();
     lcd.print("Height:");
     for (int i = 0; i < 3; i++) {
-        lcd_line_clear(6, 16, 1);
+        lcd_line_clear(0, 16, 1);
         lcd.setCursor(0, 1);
         lcd.print(name[i]);
         lcd.setCursor(7, 1);
@@ -265,6 +254,5 @@ void lcd_line_clear(int start, int rows, int collumn) {
     for (int x = start; x < rows; x++) {
         lcd.setCursor(x, collumn);
         lcd.print(" ");
-        delay(10);
     }
 }
