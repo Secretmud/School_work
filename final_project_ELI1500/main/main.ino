@@ -17,7 +17,7 @@ Gruppe 7:
 #include <Wire.h>
 #include <HCSR04.h>
 #define menu_len 16
-# define full_glass 12000
+#define full_glass 12000
 //Pin declaration
 
 int trigger[] = {5, 7, 9};
